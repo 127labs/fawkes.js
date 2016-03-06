@@ -59,16 +59,16 @@ export const createPushEvent$ = (push) => {
   push.receive('ok', response => pushEvent$.put({
     type: `${push.channel.topic}/${push.event}`,
     payload: {
-      status: 'OK',
-      response
+      ...response,
+      status: 'OK'
     }
   }))
 
   push.receive('error', response => pushEvent$.put({
     type: `${push.channel.topic}/${push.event}`,
     payload: {
-      status: 'ERROR',
-      response
+      ...response,
+      status: 'ERROR'
     }
   }))
 
@@ -94,8 +94,8 @@ export const createChannelEvent$ = (channel, event) => {
   channel.onError(response => channelEvent$.put({
     type: `${channel.topic}/STATUS`,
     payload: {
-      status: 'ERROR',
-      response
+      ...response,
+      status: 'ERROR'
     }
   }))
 
