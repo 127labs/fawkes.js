@@ -2,7 +2,7 @@
   "name": "fawkes",
   "version": "0.0.2",
   "description": "Event sourcing for Phoenix Channels",
-  "main": "dist/index.js",
+  "main": "dist/fawkes.js",
   "scripts": {
     "start": "hjs-dev-server",
     "build": "webpack",
