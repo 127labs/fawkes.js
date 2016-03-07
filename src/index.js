@@ -26,28 +26,22 @@ export const createSocketEvent$ = (socket, listenError=false) => {
   const socketEvent$ = createEvent$()
 
   socket.onOpen(() => socketEvent$.put({
-    type: `${socket.endPoint}/STATUS`,
-    payload: {
-      status: 'OPEN',
-      connected: socket.isConnected()
-    }
+    type: `${socket.endPoint}/OPEN`,
+    connected: socket.isConnected(),
+    payload: socket.endPoint
   }))
 
-  socket.onClose(() => socketEvent$.put({
-    type: `${socket.endPoint}/STATUS`,
-    payload: {
-      status: 'CLOSED',
-      connected: socket.isConnected()
-    }
+  socket.onClose(response => socketEvent$.put({
+    type: `${socket.endPoint}/CLOSE`,
+    connected: socket.isConnected(),
+    payload: response
   }))
 
   if (listenError)
-    socket.onError(() => socketEvent$.put({
-      type: `${socket.endPoint}/STATUS`,
-      payload: {
-        status: 'ERROR',
-        connected: socket.isConnected()
-      }
+    socket.onError(response => socketEvent$.put({
+      type: `${socket.endPoint}/ERROR`,
+      connected: socket.isConnected(),
+      payload: response
     }))
 
   return socketEvent$
@@ -57,27 +51,14 @@ export const createPushEvent$ = (push) => {
   const pushEvent$ = createEvent$()
 
   push.receive('ok', response => pushEvent$.put({
-    type: `${push.channel.topic}/${push.event}`,
-    payload: {
-      ...response,
-      status: 'OK'
-    }
-  }))
-
-  push.receive('error', response => pushEvent$.put({
-    type: `${push.channel.topic}/${push.event}`,
-    payload: {
-      ...response,
-      status: 'ERROR'
-    }
-  }))
-
-  push.receive('timeout', () => pushEvent$.put({
-    type: `${push.channel.topic}/${push.event}`,
-    payload: {
-      status: 'TIMEOUT',
-      response: 'Networking issue. Still waiting...'
-    }
+      type: `${push.channel.topic}/${push.event}`,
+      payload: response
+  })).receive('error', response => pushEvent$.put({
+      type: `${push.channel.topic}/${push.event}`,
+      payload: response
+  })).receive('timeout', () => pushEvent$.put({
+      type: `${push.channel.topic}/${push.event}`,
+      payload: 'Networking issue. Still waiting...'
   }))
 
   return pushEvent$
@@ -92,19 +73,13 @@ export const createChannelEvent$ = (channel, event) => {
   }))
 
   channel.onError(response => channelEvent$.put({
-    type: `${channel.topic}/STATUS`,
-    payload: {
-      ...response,
-      status: 'ERROR'
-    }
+    type: `${channel.topic}/ERROR`,
+    payload: response
   }))
 
   channel.onClose(() => channelEvent$.put({
-    type: `${channel.topic}/STATUS`,
-    payload: {
-      status: 'CLOSE',
-      response: 'The channel has gone away gracefully'
-    }
+    type: `${channel.topic}/CLOSE`,
+    payload: 'The channel has gone away gracefully'
   }))
 
   return channelEvent$
