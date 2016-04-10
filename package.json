@@ -1,6 +1,6 @@
 {
   "name": "fawkes",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Event sourcing for Phoenix Channels",
   "main": "dist/fawkes.js",
   "scripts": {
@@ -36,5 +36,8 @@
     "chai": "^3.5.0",
     "hjs-webpack": "github:imranismail/hjs-webpack",
     "mocha": "^2.4.5"
+  },
+  "dependencies": {
+    "lodash": "^4.9.0"
   }
 }
