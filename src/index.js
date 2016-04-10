@@ -1,3 +1,7 @@
+/* eslint no-console: 0 */
+import _ from 'lodash'
+import * as mappers from './mappers'
+
 export const createEvent$ = () => {
   const eventQueue = []
   const resolveQueue = []
@@ -12,82 +16,79 @@ export const createEvent$ = () => {
   }
 
   const take = () => {
+    let result
+
     if (eventQueue.length) {
-      return Promise.resolve(eventQueue.shift())
+      result = Promise.resolve(eventQueue.shift())
     } else {
-      return new Promise(resolve => resolveQueue.push(resolve))
+      result = new Promise(resolve => resolveQueue.push(resolve))
     }
+
+    return result
   }
 
-  return {take, put}
+  return { take, put }
 }
 
-export const createSocketEvent$ = (socket, listenError=false) => {
-  const socketEvent$ = createEvent$()
+export const bindHandlers = (handlers, fn) =>
+  Object.keys(handlers).reduce((acc, cur) => ({
+    ...acc,
+    [cur]: _.flow(handlers[cur], fn),
+  }), {})
 
-  socket.onOpen(() => socketEvent$.put({
-    type: `${socket.endPoint}/OPEN`,
-    connected: socket.isConnected(),
-    payload: socket.endPoint
-  }))
+export const createSocketEvent$ = (socket, mapSocketHandlers) => {
+  const source = createEvent$()
+  const mapper = _.isEmpty(mapSocketHandlers) ? mappers.mapSocketHandlers : mapSocketHandlers
+  const boundHandlers = bindHandlers(mapper(socket), source.put)
 
-  socket.onClose(response => socketEvent$.put({
-    type: `${socket.endPoint}/CLOSE`,
-    connected: socket.isConnected(),
-    payload: response
-  }))
+  Object.keys(boundHandlers).forEach(key => {
+    if (key in socket) {
+      socket[key](boundHandlers[key])
+    } else {
+      console.error('Invalid event handler passed for socket:', key)
+    }
+  })
 
-  if (listenError)
-    socket.onError(response => socketEvent$.put({
-      type: `${socket.endPoint}/ERROR`,
-      connected: socket.isConnected(),
-      payload: response
-    }))
-
-  return socketEvent$
+  return source
 }
 
-export const createPushEvent$ = (push) => {
-  const pushEvent$ = createEvent$()
+export const createPushEvent$ = (push, mapPushHandlers) => {
+  const source = createEvent$()
+  const mapper = _.isEmpty(mapPushHandlers) ? mappers.mapPushHandlers : mapPushHandlers
+  const boundHandlers = bindHandlers(mapper(push), source.put)
 
-  push.receive('ok', response => pushEvent$.put({
-      type: `${push.channel.topic}/${push.event}`,
-      payload: response
-  })).receive('error', response => pushEvent$.put({
-      type: `${push.channel.topic}/${push.event}`,
-      payload: response
-  })).receive('timeout', () => pushEvent$.put({
-      type: `${push.channel.topic}/${push.event}`,
-      payload: 'Networking issue. Still waiting...'
-  }))
+  Object.keys(boundHandlers).forEach(key => {
+    if (['ok', 'error', 'timeout'].some(k => k === key)) {
+      push.receive(key, boundHandlers[key])
+    } else {
+      console.error('Invalid event handler passed for push:', key)
+    }
+  })
 
-  return pushEvent$
+  return source
 }
 
-export const createChannelEvent$ = (channel, event) => {
-  const channelEvent$ = createEvent$()
+export const createChannelEvent$ = (channel, event, mapChannelHandlers) => {
+  const source = createEvent$()
+  const mapper = _.isEmpty(mapChannelHandlers) ? mappers.mapChannelHandlers : mapChannelHandlers
+  const boundHandlers = bindHandlers(mapper(channel, event), source.put)
 
-  channel.on(event, response => channelEvent$.put({
-    type: `${channel.topic}/${event}`,
-    payload: response
-  }))
+  Object.keys(boundHandlers).forEach(key => {
+    if (key === 'on') {
+      channel[key](event, boundHandlers[key])
+    } else if (key in channel) {
+      channel[key](boundHandlers[key])
+    } else {
+      console.error('Invalid event handler passed for channel:', event)
+    }
+  })
 
-  channel.onError(response => channelEvent$.put({
-    type: `${channel.topic}/ERROR`,
-    payload: response
-  }))
-
-  channel.onClose(() => channelEvent$.put({
-    type: `${channel.topic}/CLOSE`,
-    payload: 'The channel has gone away gracefully'
-  }))
-
-  return channelEvent$
+  return source
 }
 
 export default {
   createEvent$,
   createSocketEvent$,
   createPushEvent$,
-  createChannelEvent$
+  createChannelEvent$,
 }
