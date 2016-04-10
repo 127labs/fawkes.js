@@ -1,6 +1,6 @@
 {
   "name": "fawkes",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Event sourcing for Phoenix Channels",
   "main": "dist/fawkes.js",
   "scripts": {
