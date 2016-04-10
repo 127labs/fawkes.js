@@ -36,5 +36,8 @@
     "chai": "^3.5.0",
     "hjs-webpack": "github:imranismail/hjs-webpack",
     "mocha": "^2.4.5"
+  },
+  "dependencies": {
+    "lodash": "^4.9.0"
   }
 }
